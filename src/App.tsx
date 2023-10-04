@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { UsersList } from './components/UsersList'
 import './App.css'
 import { type User } from './types.d'
@@ -7,7 +7,8 @@ function App() {
   const [users, setUsers] = useState<User[]>([])
   const [showColors, setShowColors] = useState(false)
   const [sortByCountry, setSortByCountry] = useState(false)
-
+  const [filterCountry, setFilterCountry] = useState<string | null>(null)
+  const originalUsers = useRef<User[]>([])
 
   const toggleColors = () => {
     setShowColors(!showColors)
@@ -18,25 +19,36 @@ function App() {
   }
 
   const handleDelete = (email: string) => {
-    console.log(email)
     const filteredUsers = users.filter((user) => user.email !== email)
     setUsers(filteredUsers)
+  }
+
+  const handleReset = () => {
+    setUsers(originalUsers.current)
   }
 
 
   useEffect(() => {
     fetch('https://randomuser.me/api/?page=3&results=100')
       .then(async res => await res.json())
-      .then(data => { setUsers(data.results) })
+      .then(data => {
+        setUsers(data.results)
+        originalUsers.current = data.results
+      })
       .catch((err) => { console.log(err) })
   }, [])
 
-
-  const sortedUsers = sortByCountry
-    ? [...users].sort((a, b) => {
-      return a.location.country.localeCompare(b.location.country)
+  const filteredUsers = filterCountry
+    ? users.filter((user) => {
+      return user.location.country.toLocaleLowerCase().includes(filterCountry.toLocaleLowerCase())
     })
     : users
+
+  const sortedUsers = sortByCountry
+    ? [...filteredUsers].sort((a, b) => {
+      return a.location.country.localeCompare(b.location.country)
+    })
+    : filteredUsers
 
   return (
     <>
@@ -49,6 +61,10 @@ function App() {
           <button onClick={toggleSortByCountry}>
             {sortByCountry ? 'Desordenar por pais' : 'Ordenar por Pais'}
           </button>
+          <button onClick={handleReset}>
+            Reiniciar lista
+          </button>
+          <input type="text" placeholder="filtrar por pais" onChange={(e) => { setFilterCountry(e.target.value) }} />
         </header>
         <main>
           <UsersList deleteUser={handleDelete} showColors={showColors} users={sortedUsers} />
